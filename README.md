@@ -1,112 +1,119 @@
-
 # Task Management API
 
-The Task Management System backend is a standalone application designed to handle the logic and data management  for managing tasks. It provides a set of APIs to perform CRUD operations on tasks and includes authentication, authorization, validation, and other features.
+A standalone Spring Boot backend for managing tasks. It exposes a REST API with JWT authentication, role-based access control, request validation, centralised error handling, and versioned database migrations.
+
 ## Features
 
-- **User Management**: Secure user authentication using JWT (JSON Web Tokens).
-- **Task Management**: Create, update, delete, and retrieve tasks.
-- **Validation**: Input validation for API requests.
-- **Error Handling**: Global exception handling using `@ControllerAdvice`.
-- **Security**: JWT-based security for API endpoints.
-- **Swagger**: API documentation and testing via Swagger UI.
+- **Authentication** — stateless JWT-based login; tokens are required on all task endpoints.
+- **Authorisation** — role-based access; administrative endpoints are restricted to the `ADMIN` role.
+- **Task management** — create, read, update, delete, and search tasks by criteria.
+- **Validation** — declarative request validation on incoming payloads.
+- **Error handling** — centralised exception handling via `@ControllerAdvice`, returning consistent error responses.
+- **Database migrations** — schema managed and versioned with Flyway.
+- **Object mapping** — entity/DTO mapping generated at compile time with MapStruct.
+- **API documentation** — interactive Swagger UI.
+- **Containerisation** — Dockerfile and `docker-compose` setup for running the service with its database.
 
-## Technologies Used
+## Tech stack
 
-- **Spring Boot**: Core framework for building the API.
-- **JWT**: Used for securing endpoints and user authentication.
-- **Hibernate/JPA**: For ORM and database interaction.
-- **PostgreSQL**: Database for persisting data.
-- **Swagger**: API documentation.
-- **Maven**: For managing dependencies.
-- **MapStruct**: code generator that greatly simplifies the implementation of mappings between Java bean types based on a convention over configuration approach.
-- **flyway**: For migrate database changes.
-- **Docker**: Containerization for microservices.
+Java · Spring Boot · Spring Security (JWT) · Spring Data JPA / Hibernate · PostgreSQL · Flyway · MapStruct · Swagger / OpenAPI · Maven · Docker
 
 ## Prerequisites
 
 - JDK 11 or higher
 - Maven
 - PostgreSQL
-- Docker (optional, for containerization)
+- Docker and Docker Compose (optional)
 
-## Setup Instructions
+## Configuration
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/mohammed-a-wadod/challenge05.git
-   cd task-management
-   ```
+The application reads all environment-specific values from environment variables — nothing sensitive is committed to the repository.
 
-2. **Update database configurations**:
-   Add valid Database url, database username, and database password in the environment variable:
-   ```properties
-   spring.datasource.url=${DB_URL}
-   spring.datasource.username=${DB_USER}
-   spring.datasource.password=${DB_PASSWORD}
-   ```
-3. **Update email configurations**: Add valid email and password in application.properties, take into consideration the following:
-- turn of the second factor auth.
-- make the account less secure to enable the demo to send email to your clinet.
+| Variable | Description |
+| --- | --- |
+| `DB_URL` | JDBC connection string for PostgreSQL |
+| `DB_USER` | Database username |
+| `DB_PASSWORD` | Database password |
+| `USER_EMAIL` | Sender address for outbound notification emails |
+| `EMAIL_PASSWORD` | App-specific password for the sender account |
 
-4. **Build and run the application**:
-   Run the following commands to build and run the app:
-   ```bash
-   mvn clean install -DskipTests
-   ```
+For Gmail, generate an **App Password** under your Google Account security settings and use it as `EMAIL_PASSWORD`. Keep two-factor authentication enabled — App Passwords are designed to work alongside it.
 
-5. **Access the API documentation**:
-   Once the application is running, you can access the Swagger UI at:
-   ```
-   http://localhost:8080/swagger-ui.html
-   ``` 
+## Running the service
 
-## API Endpoints
+### Option 1 — locally with Maven
+
+```bash
+git clone https://github.com/mo-wadoud/task-management-api.git
+cd task-management-api
+
+mvn clean install -DskipTests
+
+mvn spring-boot:run -Dspring-boot.run.arguments="\
+  --DB_URL=<jdbc-url> \
+  --DB_USER=<db-user> \
+  --DB_PASSWORD=<db-password> \
+  --USER_EMAIL=<sender-email> \
+  --EMAIL_PASSWORD=<app-password>"
+```
+
+### Option 2 — with Docker Compose
+
+Create a `.env` file in the project root:
+
+```
+DB_URL=
+DB_USER=
+DB_PASSWORD=
+USER_EMAIL=
+EMAIL_PASSWORD=
+```
+
+Then start the stack:
+
+```bash
+docker-compose up --build -d --remove-orphans
+```
+
+Flyway applies the schema migrations automatically on startup.
+
+## API documentation
+
+Once the service is running, the Swagger UI is available at:
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+A Postman collection covering every endpoint is included at `postman_collection.json`.
+
+## Endpoints
 
 ### Authentication
 
-- **Login**: `POST /auth/login`
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/auth/login` | Authenticate and receive a JWT |
 
-### Task Management
+### Tasks
 
-- **Get all tasks for admin only**: `GET /api/tasks/admin/all-tasks`
-- **Search task by search criteria**: `POST /api/tasks/search`
-- **Get a task by id**: `GET /api/tasks/{id}`
-- **Create a task**: `POST /api/tasks`
-- **Update a task**: `PUT /api/tasks/{id}`
-- **Delete a task**: `DELETE /api/tasks/{id}`
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/tasks/{id}` | Retrieve a task by id |
+| `POST` | `/api/tasks` | Create a task |
+| `PUT` | `/api/tasks/{id}` | Update a task |
+| `DELETE` | `/api/tasks/{id}` | Delete a task |
+| `POST` | `/api/tasks/search` | Search tasks by criteria |
+| `GET` | `/api/tasks/admin/all-tasks` | Retrieve all tasks — `ADMIN` only |
 
-There is postman collection file which conatians all the APIs
+All task endpoints require a valid token:
 
-## Security
-
-There is predefinded users that can be used for testing:
-1. username: admin - passoword: 12345
-2. username: user - passoword: 12345
-
-All task-related endpoints require a valid JWT token in the `Authorization` header:
 ```
 Authorization: Bearer <your-token>
 ```
 
-## Running the app
+## Demo users
 
-Run task management service by one of the following
+The Flyway migrations seed two accounts for local testing — an `ADMIN` user and a standard `USER`. Their credentials are defined in the migration scripts under `src/main/resources/db-migration`.
 
-1. Running Task Management service as standalone application and add environment variables:
-   ```bash
-   mvn spring-boot:run -Dspring-boot.run.arguments="--DB_URL=dbURl --DB_USER=dbUsername --DB_PASSWORD=dbPassword --USER_EMAIL=mail --EMAIL_PASSWORD=mailPassword"
-   ```
-2. Using docker-compose:
-   - create file with name .env add this environment variables keys and assign values to it:
-   ```bash
-   DB_URL= 
-   DB_USER= 
-   DB_PASSWORD= 
-   USER_EMAIL= 
-   EMAIL_PASSWORD=
-   ```
-   - run this command
-   ```bash
-   docker-compose up --build -d --remove-orphans
-   ```
+These accounts exist for local development only and should never be used in a deployed environment.
